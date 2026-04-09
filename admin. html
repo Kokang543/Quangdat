@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản trị - Học cùng tổ 1</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        .login-box { max-width: 400px; margin: 100px auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .admin-container { display: none; }
+        .form-group { margin-bottom: 15px; }
+        .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; }
+        .preview-img { max-width: 200px; margin-top: 10px; border-radius: 8px; }
+        .post-item { border: 1px solid #ddd; margin-bottom: 15px; padding: 15px; border-radius: 8px; background: #f9f9f9; }
+    </style>
+</head>
+<body>
+
+<div id="loginPanel" class="container">
+    <div class="login-box">
+        <h2><i class="fas fa-user-shield"></i> Đăng nhập Admin</h2>
+        <input type="password" id="adminPwd" placeholder="Mật khẩu" class="form-group" style="width:100%">
+        <button id="loginBtn" class="btn btn-primary">Đăng nhập</button>
+        <p style="margin-top:10px"><a href="index.html">← Về trang chủ</a></p>
+    </div>
+</div>
+
+<div id="adminPanel" class="container admin-container" style="display:none;">
+    <div class="admin-panel">
+        <h2><i class="fas fa-cog"></i> Quản trị nội dung</h2>
+        <button id="logoutAdminBtn" class="btn btn-warning" style="float:right">Thoát</button>
+        <div style="clear:both"></div>
+        <hr>
+
+        <form id="postForm">
+            <input type="hidden" id="postId">
+            <div class="form-group">
+                <label>Tiêu đề</label>
+                <input type="text" id="title" required>
+            </div>
+            <div class="form-group">
+                <label>Nội dung (có thể dùng để thuyết trình)</label>
+                <textarea id="content" rows="6" required></textarea>
+            </div>
+            <div class="form-group">
+                <label>Ảnh đại diện (URL hoặc upload file)</label>
+                <input type="file" id="imageFile" accept="image/*">
+                <input type="text" id="imageUrl" placeholder="Hoặc nhập URL ảnh">
+                <div id="imagePreview"></div>
+            </div>
+            <div class="form-group">
+                <label>Danh mục</label>
+                <select id="category">
+                    <option>Toán học</option><option>Ngữ văn</option><option>Tiếng Anh</option>
+                    <option>Vật lý</option><option>Hóa học</option><option>Lịch sử</option>
+                    <option>Địa lý</option><option>Khoa học</option><option>Kỹ năng</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Lớp</label>
+                <select id="classLevel">
+                    <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
+                    <option>6</option><option>7</option><option>8</option><option>9</option>
+                    <option>10</option><option>11</option><option>12</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Đăng / Cập nhật</button>
+            <button type="button" id="cancelEdit" class="btn btn-warning">Hủy</button>
+        </form>
+
+        <h3 style="margin:30px 0 15px">Danh sách bài viết</h3>
+        <div id="adminPostsList"></div>
+    </div>
+</div>
+
+<script src="data.js"></script>
+<script>
+    // Kiểm tra đăng nhập
+    let isLogged = false;
+
+    document.getElementById('loginBtn').onclick = function() {
+        let pwd = document.getElementById('adminPwd').value;
+        if(pwd === 'admin123') {
+            isLogged = true;
+            document.getElementById('loginPanel').style.display = 'none';
+            document.getElementById('adminPanel').style.display = 'block';
+            loadPostsAdmin();
+        } else {
+            alert('Sai mật khẩu!');
+        }
+    };
+
+    document.getElementById('logoutAdminBtn').onclick = function() {
+        isLogged = false;
+        document.getElementById('loginPanel').style.display = 'block';
+        document.getElementById('adminPanel').style.display = 'none';
+        document.getElementById('adminPwd').value = '';
+    };
+
+    function loadPostsAdmin() {
+        const posts = getAllPosts();
+        const container = document.getElementById('adminPostsList');
+        if(posts.length === 0) {
+            container.innerHTML = '<p>Chưa có bài viết nào.</p>';
+            return;
+        }
+        container.innerHTML = posts.map(post => `
+            <div class="post-item">
+                <h4>${escapeHtml(post.title)}</h4>
+                <p>Lớp ${post.classLevel} - ${post.category} (${post.date})</p>
+                <button onclick="editPost(${post.id})" class="btn btn-warning">Sửa</button>
+                <button onclick="deletePost(${post.id})" class="btn btn-danger">Xóa</button>
+            </div>
+        `).join('');
+    }
+
+    window.editPost = function(id) {
+        const post = getPostById(id);
+        if(post) {
+            document.getElementById('postId').value = post.id;
+            document.getElementById('title').value = post.title;
+            document.getElementById('content').value = post.content;
+            document.getElementById('imageUrl').value = post.imageUrl;
+            document.getElementById('category').value = post.category;
+            document.getElementById('classLevel').value = post.classLevel;
+            document.getElementById('imagePreview').innerHTML = `<img src="${post.imageUrl}" class="preview-img">`;
+            window.scrollTo(0,0);
+        }
+    };
+
+    window.deletePost = function(id) {
+        if(confirm('Xóa bài viết này?')) {
+            deletePostById(id);
+            loadPostsAdmin();
+            alert('Đã xóa!');
+        }
+    };
+
+    // Xử lý form thêm/sửa
+    document.getElementById('postForm').onsubmit = function(e) {
+        e.preventDefault();
+        const id = document.getElementById('postId').value;
+        const title = document.getElementById('title').value;
+        const content = document.getElementById('content').value;
+        let imageUrl = document.getElementById('imageUrl').value;
+        const category = document.getElementById('category').value;
+        const classLevel = document.getElementById('classLevel').value;
+        const date = new Date().toISOString().slice(0,10);
+
+        if(!imageUrl) imageUrl = 'https://picsum.photos/800/400';
+
+        if(id) {
+            updatePost(parseInt(id), { title, content, imageUrl, category, classLevel, date });
+        } else {
+            addPost({ title, content, imageUrl, category, classLevel, date });
+        }
+        resetForm();
+        loadPostsAdmin();
+        alert('Đã lưu bài viết!');
+    };
+
+    function resetForm() {
+        document.getElementById('postId').value = '';
+        document.getElementById('title').value = '';
+        document.getElementById('content').value = '';
+        document.getElementById('imageUrl').value = '';
+        document.getElementById('imageFile').value = '';
+        document.getElementById('imagePreview').innerHTML = '';
+        document.getElementById('category').value = 'Toán học';
+        document.getElementById('classLevel').value = '1';
+    }
+
+    document.getElementById('cancelEdit').onclick = resetForm;
+
+    // Upload ảnh
+    document.getElementById('imageFile').onchange = function(e) {
+        const file = e.target.files[0];
+        if(file) {
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+                document.getElementById('imageUrl').value = ev.target.result;
+                document.getElementById('imagePreview').innerHTML = `<img src="${ev.target.result}" class="preview-img">`;
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+    document.getElementById('imageUrl').oninput = function() {
+        const url = this.value;
+        if(url) document.getElementById('imagePreview').innerHTML = `<img src="${url}" class="preview-img" onerror="this.src='https://picsum.photos/200/200'">`;
+        else document.getElementById('imagePreview').innerHTML = '';
+    };
+
+    function escapeHtml(str) {
+        return str.replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));
+    }
+</script>
+</body>
+</html>
